@@ -21,6 +21,73 @@ npm run dev
 npm run build && npm run start   # production build
 ```
 
+## Deploying to hosting without Node.js (shared hosting, cPanel, etc.)
+
+`next.config.mjs` is already set to `output: "export"`, so `npm run build` produces a fully static
+`out/` folder — plain HTML, CSS and JS, no server required.
+
+```bash
+npm run build
+# static site is now in ./out
+```
+
+Upload the **contents** of `out/` (not the folder itself — `index.html`, `_next/`, `video/`, `images/`,
+`logo.png`) to your host's public web root (often `public_html/` or `www/`) via FTP or your host's file
+manager.
+
+A few things that matter specifically for this site on plain static hosting:
+
+- **The hero video needs HTTP Range request support** to seek properly (that's how GSAP scrubs
+  `currentTime` as you scroll). Almost all standard Apache/Nginx shared hosting supports this by default
+  for static files — but if the hero video won't scrub after deploying, this is the first thing to check
+  with your host.
+- **Subdirectory hosting** — if the site lives at `yourdomain.com/` this needs nothing extra. If it's
+  going in a subfolder (e.g. `yourdomain.com/noor/`), add `basePath: "/noor"` to `next.config.mjs` before
+  building, or every absolute asset path (`/logo.png`, `/video/hero.mp4`, etc.) will 404.
+- **`next/font/google`** (Cormorant Garamond, Inter, Tajawal) are self-hosted automatically at build
+  time — the actual font files end up in `_next/static/`, so nothing is fetched from Google at runtime.
+  Works the same on any host.
+- Anything requiring a live Node server — Next's image optimizer, API routes, server actions — isn't used
+  anywhere in this project, so nothing is lost by exporting statically.
+
+## Deploying via GitHub + cPanel Git Version Control
+
+This repo includes a `.cpanel.yml` deployment script, so cPanel can deploy straight from GitHub without
+ever needing to run `npm install`/`npm run build` on the server (Bluehost's shared plans don't run Node) —
+the trick is committing the already-built `out/` folder to the repo, and letting cPanel just copy those
+files into `public_html`.
+
+1. **Build locally**: `npm run build` → generates `out/`. (`.gitignore` no longer excludes it — it needs
+   to be committed.)
+2. **Edit `.cpanel.yml`**: replace `YOUR_CPANEL_USERNAME` with your actual cPanel username (find it in the
+   top-right of the cPanel dashboard).
+3. **Push to GitHub**:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial deploy"
+   ```
+   Create a new repo on github.com (public is simplest — there's nothing sensitive in a static site), then:
+   ```bash
+   git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+   git push -u origin main
+   ```
+4. **In Bluehost cPanel**, search for **Git™ Version Control** → **Create**.
+   - Clone URL: your repo's `.git` URL from GitHub
+   - Repository Path: something like `repositories/noor-al-maraya` (⚠️ not `public_html` directly —
+     keeping the git checkout separate from the web root is what `.cpanel.yml` is for)
+   - If the repo is private, GitHub will ask for a deploy key: cPanel shows a public SSH key when you try
+     to clone — add it under the GitHub repo's **Settings → Deploy Keys**. A public repo skips this step.
+5. Once cloned, open the repository in Git Version Control → **Pull or Deploy** tab → **Deploy HEAD
+   Commit**. This runs `.cpanel.yml`, copying `out/`'s contents into `public_html`.
+6. Visit your domain to confirm.
+
+**Future updates**: make changes → `npm run build` → `git add . && git commit -m "..." && git push` →
+back in cPanel, **Update from Remote** then **Deploy HEAD Commit**. No FTP, no manual file uploads.
+
+If **Git™ Version Control** isn't available on your specific plan, fall back to the manual method above
+(build locally, zip `out/`'s contents, upload + extract via File Manager).
+
 ## What's real vs. placeholder
 
 - **Logo** (`public/logo.png`) — extracted from your uploaded lockup, background keyed to transparent.
