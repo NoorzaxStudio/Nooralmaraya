@@ -3,10 +3,12 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { content, Locale } from "./content";
 
+type Content = (typeof content)[Locale];
+
 type Ctx = {
   locale: Locale;
   toggleLocale: () => void;
-  t: (typeof content)["en"];
+  t: Content;
 };
 
 const LanguageContext = createContext<Ctx | null>(null);
@@ -16,7 +18,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = window.localStorage.getItem("noor-locale") as Locale | null;
-    if (stored === "en" || stored === "ar") setLocale(stored);
+    if (stored === "en" || stored === "ar") {
+      setLocale(stored);
+    }
   }, []);
 
   useEffect(() => {
@@ -25,10 +29,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem("noor-locale", locale);
   }, [locale]);
 
-  const toggleLocale = () => setLocale((prev) => (prev === "en" ? "ar" : "en"));
+  const toggleLocale = () =>
+    setLocale((prev) => (prev === "en" ? "ar" : "en"));
 
   return (
-    <LanguageContext.Provider value={{ locale, toggleLocale, t: content[locale] }}>
+    <LanguageContext.Provider
+      value={{
+        locale,
+        toggleLocale,
+        t: content[locale],
+      }}
+    >
       {children}
     </LanguageContext.Provider>
   );
@@ -36,6 +47,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
 export function useLanguage() {
   const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error("useLanguage must be used within LanguageProvider");
+
+  if (!ctx) {
+    throw new Error("useLanguage must be used within LanguageProvider");
+  }
+
   return ctx;
 }
